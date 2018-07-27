@@ -1,0 +1,1054 @@
+.model small
+.stack
+.data
+
+msg db 10,13, 'Press ESC to exit...','$'
+x db 0      ;Variable utilizada para mantener el orden y limite de caracteres
+x_g db 12   ;Variable para controlar donde se imprimen los caracteres
+a db 0      ;Primer elemento de la operacion
+b db 0      ;Segundo elemento de la operacion
+op db 0     ;Operacion que se va a realizar
+res db 0    ;Variable para guardar el residuo de la div momentaneamente 
+.code
+mov ax, @data  ; Se mueven los datos y variables a ax
+mov ds, ax     ; Se mueve al segmento de datos (ds), ax
+
+jmp bordes     ; Se salta a la etiqueta para empezar a dibujar
+;Etiqueta principal para imprimir los caracteres de la calculadora
+calculadora:
+mov dh, 17  ; Posicion en Y
+mov dl, 12  ; Posicion en X 
+mov ah, 02h ; Funcion para posicionar el cursor
+int 10h     ; Interrupcion
+mov dx, offset msg 
+mov ah, 09h ; Modo para imprimir un mensaje sin modo grafico
+int 21h     ; Interrupcion
+xor ax, ax  ; Se limpia el regristro ax
+xor bx, bx  ; Se limpia el regristro bx
+xor cx, cx  ; Se limpia el regristro cx
+xor dx, dx  ; Se limpia el regristro dx
+mov cx, 7   ; Cantidad de veces que se va a entrar al loop
+mov al, 30h ; Caracter a imprimir
+mov dh, 6   ; Posicion en Y
+mov dl, 12  ; Posicion en X
+
+;Etiqueta para inicar a imprimir los numeros del 1 al 9
+numeros:   ;*******************************************************************************
+mov ah, 02h  ; Instruccion para posicionar el cursor
+int 10h      ; Interrupcion para posicionar el cursor
+mov ah, 0eh  ; Para imprimir el caracter en modo grafico
+mov bx, 0071h; Donde en BH esta el numero de pagina y en BL el color de fondo
+inc al       ; Caracter que se va a imprimir
+int 10h      ; ;Interrupcionpara imprimir el caracter posicionado
+
+;Etiqueta para controlar las posiciones del cursor
+comparar:
+cmp dl, 20   ; Compara si se esta al limite del eje X para avanzar en el eje Y
+je avanzar   ; Si es asi salta
+add dl, 4    ; Aumenta en 3 las coordenadas del eje X
+loop numeros
+
+;Etiqueta para controlar las posiciones del cursor
+avanzar:                  
+mov dl, 12    ; Regresa la posicion X del cursor a 12
+add dh, 3     ; Aumenta la posicion Y del cursor en 3
+cmp dh, 15    ; Compara Si se esta al limite del eje Y para salir
+je operaciones; Si es asi sale de la etiqueta y salta a colocar los simbolos de operaciones
+jmp numeros
+
+;Etiqueta para iniciar la impresion de las operaciones basicas
+operaciones:  ;*******************************************************************************
+mov dl, 24 ; POS X
+mov dh, 6  ; POS Y
+mov cx, 4  ; Cantidad de loops
+
+;Etiqueta para comparar y saber cual simbolo imprimir
+simbolos_ops:
+cmp cx, 4
+je suma_sim  ;Si cx esta en 4 salta a suma_sim
+cmp cx, 3
+je resta_sim ;Si cx esta en 3 salta a resta_sim
+cmp cx, 2
+je mul_sim   ;Si cx esta en 2 salta a mul_sim
+cmp cx, 1
+je div_sim   ;Si cx esta en 1 salta a div_sim
+
+;Etiqueta para simbolo de suma
+suma_sim:
+mov al, 2bh  ;Se mueve a AL el simbolo de suma
+jmp imprimir_ops
+
+;etiqueta para simbolo de resta
+resta_sim:
+mov al, 2dh  ;Se mueve a AL el simbolo de resta
+jmp imprimir_ops
+
+;etiqueta para simbolo de multiplicacion
+mul_sim:
+mov al, 78h  ;Se mueve a AL el simbolo de multiplicacion
+jmp imprimir_ops
+
+;etiqueta para simbolo de division                                       
+div_sim:
+mov al, 2fh  ;Se mueve a AL el simbolo de division
+jmp imprimir_ops
+
+;Etiqueta para imprimir los simbolos de operaciones
+imprimir_ops:
+mov ah, 02h ;Solicitud para colocar el cursor
+int 10h     
+mov ah, 0eh  ; Para imprimir el caracter en modo grafico
+mov bx, 0071h; Donde en BH esta el numero de pagina y en BL el color de fondo
+int 10h
+add dh, 3     ;Aumenta el eje Y en 3
+cmp dh, 18    ;Compara el eje Y con 18
+je acciones:  ;Salta si el eje Y=18
+loop simbolos_ops
+
+;Etiqueta para iniciar a imprimir la parte inferior de la calculadora
+acciones:  ;*******************************************************************************
+mov dl, 12  ;EJE X=3
+mov dh, 15  ;EJE Y=9
+mov cx, 3  ;Cantidad de loops
+
+;Etiqueta para saber cual accion imprimir
+simbolos_acc:
+cmp cx, 3
+je clear_sim ;Si cx=3 salta a la etiqueta para imprimir C
+cmp cx, 2
+je cero_sim  ;Si cx=2 salta a la etiqueta para imprimir 0
+cmp cx, 1
+je igual_sim ;Si cx=1 salta a la etiqueta para imprimir =
+
+;Etiqueta para al=c
+clear_sim:
+mov al, 43h  ;Mueve a AL el simbolo C
+jmp imprimir_acc
+
+;Etiqueta para al=0
+cero_sim:
+mov al, 30h  ;Mueve a AL el simbolo 0
+jmp imprimir_acc
+
+;Etiqueta para al="="
+igual_sim:
+mov al, 3dh  ;Mueve a AL el simbolo =
+jmp imprimir_acc
+
+;Etiqueta para imprimir los simbololos de acciones
+imprimir_acc: 
+mov ah, 02h   ; Funcion para posicionar el cursor
+int 10h
+mov ah, 0eh   ; Modo para imprimir caracteres en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL el color de fondo
+int 10h
+add dl, 4     ; eje X=X+3
+cmp dl, 24    ; Compara si se esta al limite del eje X
+je mouse_pre  ; Si dl=12 salta a bordes
+loop simbolos_acc
+;*******************************************************************************
+bordes:
+xor ax, ax   ; Se limpia el registro ax
+xor bx, bx   ; Se limpia el registro bx
+xor cx, cx   ; Se limpia el registro cx
+xor dx, dx   ; Se limpia el registro dx
+mov al, 13h  ; Funcion para modo grafico
+int 10h      ; interrupcion
+mov cx, 86   ; eje X
+mov dx, 10   ; eje Y
+
+bucle:
+mov ax, 0c09h; Donde en AH esta el modo para escribir un punto o pixel y en AL esta el color
+int 10h      ; Interrupcion para imprimir el pixel
+add cx, 3    ; Se aumenta la posicion en X para imprimir el pixel
+cmp cx, 206  ; Se compara si se llega al limite para imprimir los pixeles
+je bordes_2  ; Si se esta en el limite se salta a la siguiente etiqueta para imprimir pixeles
+jmp bucle    ; Si falla la linea seguira indefinidamente
+
+bordes_2:
+mov cx, 86   ; eje X
+mov dx, 40   ; eje Y
+
+bucle_2:
+mov ax, 0c09h; Donde en AH esta el modo para escribir un punto o pixel y en AL esta el color
+int 10h      ; Interrupcion para imprimir el pixel
+add cx, 3    ; Se aumenta la posicion en X para imprimir el pixel
+cmp cx, 206  ; Se compara si se llega al limite para imprimir los pixeles
+je bordes_3  ; Si se esta en el limite se salta a la siguiente etiqueta para imprimir pixeles
+jmp bucle_2  ; Si falla la linea seguira indefinidamente
+
+bordes_3:
+mov cx, 86   ; eje X
+mov dx, 135  ; eje Y
+
+bucle_3:
+mov ax, 0c09h; Donde en AH esta el modo para escribir un punto o pixel y en AL esta el color
+int 10h      ; Interrupcion para imprimir el pixel
+add cx, 3    ; Se aumenta la posicion en X para imprimir el pixel
+cmp cx, 206  ; Se compara si se llega al limite para imprimir los pixeles
+je bordes_4  ; Si se esta en el limite se salta a la siguiente etiqueta para imprimir pixeles
+jmp bucle_3  ; Si falla la linea seguira indefinidamente
+
+bordes_4:
+mov cx, 86   ; eje X
+mov dx, 10   ; eje Y
+
+bucle_4:
+mov ax, 0c09h; Donde en AH esta el modo para escribir un punto o pixel y en AL esta el color
+int 10h      ; Interrupcion para imprimir el pixel
+add dx, 3    ; Se aumenta la posicion en Y para imprimir el pixel
+cmp dx, 136  ; Se compara si se llega al limite para imprimir los pixeles
+je bordes_5  ; Si se esta en el limite se salta a la siguiente etiqueta para imprimir pixeles
+jmp bucle_4  ; Si falla la linea seguira indefinidamente
+
+bordes_5:
+mov cx, 206  ; eje X
+mov dx, 10   ; eje Y  
+
+bucle_5:
+mov ax, 0c09h; Donde en AH esta el modo para escribir un punto o pixel y en AL esta el color
+int 10h      ; Interrupcion para imprimir el pixel
+add dx, 3    ; Se aumenta la posicion en Y para imprimir el pixel
+cmp dx, 136  ; Se compara si se llega al limite para imprimir los pixeles
+je bordes_6  ; Si se esta en el limite se salta a la siguiente etiqueta para imprimir pixeles
+jmp bucle_5  ; Si falla la linea seguira indefinidamente
+            
+bordes_6:
+mov cx, 86   ; eje X
+mov dx, 65   ; eje Y
+            
+bucle_6:
+mov ax, 0c09h; Donde en AH esta el modo para escribir un punto o pixel y en AL esta el color
+int 10h      ; Interrupcion para imprimir el pixel
+add cx, 3    ; Se aumenta la posicion en Y para imprimir el pixel
+cmp cx, 206  ; Se compara si se llega al limite para imprimir los pixeles
+je bordes_7  ; Si se esta en el limite se salta a la siguiente etiqueta para imprimir pixeles
+jmp bucle_6  ; Si falla la linea seguira indefinidamente
+
+bordes_7:
+mov cx, 86   ; eje X
+mov dx, 90   ; eje Y
+            
+bucle_7:
+mov ax, 0c09h; Donde en AH esta el modo para escribir un punto o pixel y en AL esta el color
+int 10h      ; Interrupcion para imprimir el pixel
+add cx, 3    ; Se aumenta la posicion en Y para imprimir el pixel
+cmp cx, 206  ; Se compara si se llega al limite para imprimir los pixeles
+je bordes_8  ; Si se esta en el limite se salta a la siguiente etiqueta para imprimir pixeles
+jmp bucle_7  ; Si falla la linea seguira indefinidamente
+
+bordes_8:
+mov cx, 86   ; eje X
+mov dx, 113  ; eje Y
+            
+bucle_8:
+mov ax, 0c09h; Donde en AH esta el modo para escribir un punto o pixel y en AL esta el color
+int 10h      ; Interrupcion para imprimir el pixel
+add cx, 3    ; Se aumenta la posicion en Y para imprimir el pixel
+cmp cx, 206  ; Se compara si se llega al limite para imprimir los pixeles
+je bordes_9  ; Si se esta en el limite se salta a la siguiente etiqueta para imprimir pixeles
+jmp bucle_8  ; Si falla la linea seguira indefinidamente
+
+bordes_9:
+mov cx, 115  ; eje X
+mov dx, 40   ; eje Y  
+
+bucle_9:
+mov ax, 0c09h; Donde en AH esta el modo para escribir un punto o pixel y en AL esta el color
+int 10h      ; Interrupcion para imprimir el pixel
+add dx, 3    ; Se aumenta la posicion en Y para imprimir el pixel
+cmp dx, 136  ; Se compara si se llega al limite para imprimir los pixeles
+je bordes_10 ; Si se esta en el limite se salta a la siguiente etiqueta para imprimir pixeles
+jmp bucle_9  ; Si falla la linea seguira indefinidamente
+
+bordes_10:
+mov cx, 145  ; eje X
+mov dx, 40   ; eje Y  
+
+bucle_10:
+mov ax, 0c09h; Donde en AH esta el modo para escribir un punto o pixel y en AL esta el color
+int 10h      ; Interrupcion para imprimir el pixel
+add dx, 3    ; Se aumenta la posicion en Y para imprimir el pixel
+cmp dx, 136  ; Se compara si se llega al limite para imprimir los pixeles
+je bordes_11 ; Si se esta en el limite se salta a la siguiente etiqueta para imprimir pixeles
+jmp bucle_10 ; Si falla la linea seguira indefinidamente
+
+bordes_11:
+mov cx, 175  ; eje X
+mov dx, 40   ; eje Y  
+
+bucle_11:
+mov ax, 0c09h; Donde en AH esta el modo para escribir un punto o pixel y en AL esta el color
+int 10h      ; Interrupcion para imprimir el pixel
+add dx, 3    ; Se aumenta la posicion en Y para imprimir el pixel
+cmp dx, 136  ; Se compara si se llega al limite para imprimir los pixeles
+je calculadora;Una ves se llega al limite de la ultima linea dibujada entonces se salta a la etiqueta que iniciara a imprimir caracteres
+jmp bucle_11 ; Si falla la linea seguira indefinidamente
+;*******************************************************************************            
+mouse_pre:
+mov ax, 0000h ; Funcion para inicializar el mouse
+int 33h       ; Interrupcion para habilitar el mouse
+
+mouse:
+mov ax, 0003h ; Se valida click
+int 33h      
+mov ah, 01h   ; Funcion en AH para leer el teclado sin afectar la int del mouse
+int 16h       ; Interrupcion para leer teclado
+cmp al, 1bh   ; Se compara si al es ESC
+je finalizar  ; Salta para terminar el programa si es asi
+cmp bx, 0001h ; Compara si se presiono el click izquierdo
+je loc_sim    ; Si es asi salta a la etiqueta para localizar donde esta el puntero
+jmp mouse     ; Si no se presiona ESC o CLICK IZQ entonces sigue el bucle "mouse" 
+
+;Etiqueta para saber cual simbolo se esta presionando
+loc_sim:
+;Eriquetas para comprobar si el puntero esta en en dentro del area valida para verificar
+dentro1:
+cmp dx, 0028h ; Se verifica si el puntero esta por debajo del borde superior de la calculadora 
+jae dentro2   ; Si es asi salta a la siguiente etiqueta
+jmp mouse     ; Si no cumple vuelve a la etiqueta para verificar nueva mente la posicion del mouse
+
+dentro2:
+cmp cx, 00ach ; Se verifica si el puntero esta a la derecha del borde izquierdo de la calculadora
+jae dentro3   ; Si es asi salta a la siguiente etiqueta
+jmp mouse     ; Si no cumple vuelve a la etiqueta para verificar nueva mente la posicion del mouse
+
+dentro3:
+cmp dx, 0086h ; Se verifica si el puntero esta por encima de el borde inferior de la calculadora
+jb dentro4    ; Si es asi salta a la siguiente etiqueta 
+jmp mouse     ; Si no cumple vuelve a la etiqueta para verificar nueva mente la posicion del mouse
+
+dentro4:
+cmp cx, 019ch ; Se verifica si el puntero esta a la izquierda del borde derecho de la calculadora
+jb parte1_y   ; Si es asi salta a la siguiente etiqueta  para imprimir caracteres
+jmp mouse     ; Si no cumple vuelve a la etiqueta para verificar nueva mente la posicion del mouse
+;*******************************************************************************
+parte1_y:     ; Una ves que la posicion del puntero es valida se verifica sobre que caracter esta el puntero
+cmp dx, 0041h ; Se verifica si el puntero esta sobre la linea inferior de la fila (1,2,3,+)
+jb sparte1_x  ; Si es es asi salta a la sig etiqueta para saber en que parte de esa linea esta.
+jmp parte2_y  ; Sino esta en esa parte se continua a la siguiente etiqueta
+
+sparte1_x:
+cmp cx, 00e6h ; Se verifica si esta en la linea a la derecha del 1 ( 1| ) hacia la izq 
+jb imprimir1  ; Si es asi se salta a la etiqueta para imprimir el 1
+jmp sparte2_x ; Sino esta en esa parte se continua a la siguiente etiqueta 
+
+imprimir1:
+cmp x, 0      ; Se compara x con 0 para saber si es valido imprimir un numero
+je colocar_a1 ; Si es asi se salta para imprimirlo
+cmp x, 2      ; Se compara x con 2 para saber si es valido imprimir un numero
+je colocar_b1 ; Si es asi se salta para imprimirlo
+jmp mouse     ; Si no es valido se salta para seguir validando donde esta el mouse
+
+colocar_a1:
+mov a, 1      ; Se coloca en a el uno
+inc x         ; Se aumenta el valor de x para validaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 31h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se aumenta el x para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+colocar_b1:
+mov b, 1      ; Se coloca en a el uno
+inc x         ; Se aumenta el valor de x para validaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_G
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 31h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion 
+inc x_g       ; Se aumenta el x para imprimir en pantalla 
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+sparte2_x:
+cmp cx, 0122h ; Se verifica si esta en la linea a la derecha del 2 ( 2| ) hacia la izq
+jb imprimir2  ; Si es asi salta a la etiqueta para imprimir el 2
+jmp sparte3_x ; Sino esta en esa parte se continua a la siguiente etiqueta 
+
+imprimir2:    
+cmp x, 0      ; Se compara x con 0 para saber si es valido imprimir un numero
+je colocar_a2 ; Si es asi se salta para imprimirlo
+cmp x, 2      ; Se compara x con 2 para saber si es valido imprimir un numero
+je colocar_b2 ; Si es asi se salta para imprimirlo
+jmp mouse     ; Si no es valido se salta para seguir validando donde esta el mouse
+
+colocar_a2:
+mov a, 2      ; Se coloca en a el dos
+inc x         ; Se incrementa el valor de x para validaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 32h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+colocar_b2:
+mov b, 2      ; Se coloca en b el dos
+inc x         ; Se incrementa el valor de x para validaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 32h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion 
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+sparte3_x:
+cmp cx, 015eh ; Se verifica si esta en la linea a la derecha del 3 ( 3| ) hacia la izq
+jb imprimir3  ; Si es asi salta a la etiqueta para imprimir el 3
+jmp sparte4_x ; Sino esta en esa parte se continua a la siguiente etiqueta
+
+imprimir3:
+cmp x, 0      ; Se compara x con 0 para saber si es valido imprimir un numero
+je colocar_a3 ; Si es asi se salta para imprimirlo
+cmp x, 2      ; Se compara x con 2 para saber si es valido imprimir un numero
+je colocar_b3 ; Si es asi se salta para imprimirlo
+jmp mouse     ; Si no es valido se salta para seguir validando donde esta el mouse
+
+colocar_a3:
+mov a, 3      ; Se coloca en a el tres
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 33h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal 
+
+colocar_b3:
+mov b, 3      ; Se coloca en b el 3
+inc x         ; Se increment el valor de x para validaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; xxx
+mov bx, 0071h ; xxx
+mov al, 33h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion 
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal 
+
+sparte4_x:
+cmp x, 1          ; Se compara x con 1 para saber si es valido imprimir un simbolode operacion
+je colocar_op_mas ; Si es asi se salta a la etiqueta para imprimir el simbolo
+jmp mouse         ; Si no se regresa al bucle principal
+
+colocar_op_mas:
+mov op, 2bh   ; Se coloca en op el valor en hexa de el simbolo "+"
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 2bh   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x         ; Se incrementa el valor de x para validaciones
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal 
+;*******************************************************************************
+parte2_y:
+cmp dx, 005ah ; Se verifica si el puntero esta sobre la linea inferior de la fila (4,5,6,-)
+jb sparte1_x2 ; Si es es asi salta a la sig etiqueta para saber en que parte de esa linea esta.
+jmp parte3_y  ; Sino esta en esa parte se continua a la siguiente etiqueta
+ 
+sparte1_x2:
+cmp cx, 00e6h ; Se verifica si esta en la linea a la derecha del 4 ( 4| ) hacia la izq
+jb imprimir4  ; Si es asi salta a la etiqueta para imprimir el 4
+jmp sparte2_x2; Sino esta en esa parte se continua a la siguiente etiqueta
+
+imprimir4:
+cmp x, 0      ; Se compara x con 0 para saber si es valido imprimir un numero
+je colocar_a4 ; Si es asi se salta para imprimirlo
+cmp x, 2      ; Se compara x con 2 para saber si es valido imprimir un numero
+je colocar_b4 ; Si es asi se salta para imprimirlo
+jmp mouse     ; Si no es valido se salta para seguir validando donde esta el mouse
+
+colocar_a4:
+mov a, 4      ; Se coloca en a el cuatro
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 34h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+colocar_b4:
+mov b, 4      ; Se coloca en a el cuatro
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 34h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+sparte2_x2:
+cmp cx, 0122h ; Se verifica si esta en la linea a la derecha del 5 ( 5| ) hacia la izq
+jb imprimir5  ; Si es asi salta a la etiqueta para imprimir el 5
+jmp sparte3_x2; Sino esta en esa parte se continua a la siguiente etiqueta
+
+imprimir5:
+cmp x, 0      ; Se compara x con 0 para saber si es valido imprimir un numero
+je colocar_a5 ; Si es asi se salta para imprimirlo
+cmp x, 2      ; Se compara x con 2 para saber si es valido imprimir un numero
+je colocar_b5 ; Si es asi se salta para imprimirlo
+jmp mouse     ; Si no es valido se salta para seguir validando donde esta el mouse
+
+colocar_a5:
+mov a, 5      ; Se coloca en a el cuatro
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 35h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+colocar_b5:
+mov b, 5      ; Se coloca en a el cuatro
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 35h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+sparte3_x2:
+cmp cx, 015eh ; Se verifica si esta en la linea a la derecha del 6 ( 6| ) hacia la izq
+jb imprimir6  ; Si es asi salta a la etiqueta para imprimir el 6
+jmp sparte4_x2; Sino esta en esa parte se continua a la siguiente etiqueta
+
+imprimir6:
+cmp x, 0      ; Se compara x con 0 para saber si es valido imprimir un numero
+je colocar_a6 ; Si es asi se salta para imprimirlo
+cmp x, 2      ; Se compara x con 2 para saber si es valido imprimir un numero
+je colocar_b6 ; Si es asi se salta para imprimirlo
+jmp mouse     ; Si no es valido se salta para seguir validando donde esta el mouse
+
+colocar_a6:
+mov a, 6      ; Se coloca en a el cuatro
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 36h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+colocar_b6:
+mov b, 6      ; Se coloca en a el cuatro
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 36h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+sparte4_x2:
+cmp x, 1            ; Se compara x con 1 para saber si es valido imprimir un simbolode operacion
+je colocar_op_menos ; Si es asi se salta a la etiqueta para imprimir el simbolo
+jmp mouse           ; Si no se regresa al bucle principal
+                   
+colocar_op_menos:
+mov op, 2dh   ; Se mueve a op el valor en hexa de "-"
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 2dh   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x         ; Se incrementa el valor de x para validaciones
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+;*******************************************************************************
+parte3_y:     
+cmp dx, 0071h ; Se verifica si el puntero esta sobre la linea inferior de la fila (7,8,9,x)
+jb sparte1_x3 ; Si es es asi salta a la sig etiqueta para saber en que parte de esa linea esta.
+jmp parte4_y  ; Sino esta en esa parte se continua a la siguiente etiqueta
+
+sparte1_x3:
+cmp cx, 00e6h ; Se verifica si esta en la linea a la derecha del 7 ( 7| ) hacia la izq
+jb imprimir7  ; Si es asi salta a la etiqueta para imprimir el 7
+jmp sparte2_x3; Sino esta en esa parte se continua a la siguiente etiqueta
+
+imprimir7:
+cmp x, 0      ; Se compara x con 0 para saber si es valido imprimir un numero
+je colocar_a7 ; Si es asi se salta para imprimirlo
+cmp x, 2      ; Se compara x con 2 para saber si es valido imprimir un numero
+je colocar_b7 ; Si es asi se salta para imprimirlo
+jmp mouse     ; Si no es valido se salta para seguir validando donde esta el mouse
+
+colocar_a7:
+mov a, 7      ; Se coloca en a el cuatro
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 37h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+colocar_b7:
+mov b, 7      ; Se coloca en a el cuatro
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 37h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+sparte2_x3:
+cmp cx, 0122h ; Se verifica si esta en la linea a la derecha del 8 ( 8| ) hacia la izq
+jb imprimir8  ; Si es asi salta a la etiqueta para imprimir el 8
+jmp sparte3_x3; Sino esta en esa parte se continua a la siguiente etiqueta
+
+imprimir8:
+cmp x, 0      ; Se compara x con 0 para saber si es valido imprimir un numero
+je colocar_a8 ; Si es asi se salta para imprimirlo
+cmp x, 2      ; Se compara x con 2 para saber si es valido imprimir un numero
+je colocar_b8 ; Si es asi se salta para imprimirlo
+jmp mouse     ; Si no es valido se salta para seguir validando donde esta el mouse
+
+colocar_a8:
+mov a, 8      ; Se coloca en a el cuatro
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 38h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+colocar_b8:
+mov b, 8      ; Se coloca en a el cuatro
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 38h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+sparte3_x3:
+cmp cx, 015eh ; Se verifica si esta en la linea a la derecha del 9 ( 9| ) hacia la izq
+jb imprimir9  ; Si es asi salta a la etiqueta para imprimir el 9
+jmp sparte4_x3; Sino esta en esa parte se continua a la siguiente etiqueta
+
+imprimir9:
+cmp x, 0      ; Se compara x con 0 para saber si es valido imprimir un numero
+je colocar_a9 ; Si es asi se salta para imprimirlo
+cmp x, 2      ; Se compara x con 2 para saber si es valido imprimir un numero
+je colocar_b9 ; Si es asi se salta para imprimirlo
+jmp mouse     ; Si no es valido se salta para seguir validando donde esta el mouse
+
+colocar_a9:
+mov a, 9      ; Se coloca en a el cuatro
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 39h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+colocar_b9:
+mov b, 9      ; Se coloca en a el cuatro
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 39h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+sparte4_x3:
+cmp x, 1          ; Se compara x con 1 para saber si es valido imprimir un simbolode operacion
+je colocar_op_mul ; Si es asi se salta a la etiqueta para imprimir el simbolo
+jmp mouse         ; Si no se regresa al bucle principal
+
+colocar_op_mul:
+mov op, 78h   ; Se mueve a op el valor en hexa para "x"
+mov dh, 3     ; Y=3 
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 78h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x         ; Se incrementa el valor de x para validaciones
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal 
+;*******************************************************************************
+parte4_y:
+jmp sparte1_x4; Sino esta en esa parte se continua a la siguiente etiqueta
+
+sparte1_x4:
+cmp cx, 00e6h ; Se verifica si esta en la linea a la derecha del C ( C| ) hacia la izq
+jb clear_reg  ; Si es asi salta a la etiqueta para imprimir el C
+jmp sparte2_x4; Sino esta en esa parte se continua a la siguiente etiqueta
+
+clear_reg:
+mov x, 0      ; Se limpia el valor en x para validaciones
+mov x_g, 12   ; Se posiciona el x_g para imprimir desde el inicio del reglon
+mov a, 0      ; Se limpia la variable a
+mov b, 0      ; Se limpia la variable b
+mov op, 0     ; Se limpia la variable donde se guarda la operacion
+
+clear_pantalla:
+cmp x_g, 21   ; Se verifica si ya se borro el ultimo espacio de pantalla
+je limpio     ; Si es asi se salta a la etiqueta para reiniciar x_g
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir caracteres en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 20h   ; Caracter que se va a imprimir "C"
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+int 10h       ; Interrupcion para imprimir el caracter
+jmp clear_pantalla; Se continuna el bucle hasta que x_g tenga valor igul a 21
+
+limpio:
+mov x_g, 12   ; Se reinicia el valor de x_g a 12
+jmp mouse     ; Una ves listo se regresa al bucle  principal
+
+sparte2_x4:
+cmp cx, 0122h ; Se verifica si esta en la linea a la derecha del 0 ( 0| ) hacia la izq
+jb imprimir0  ; Si es asi salta a la etiqueta para imprimir el 0
+jmp sparte3_x4; Sino esta en esa parte se continua a la siguiente etiqueta
+
+imprimir0:
+cmp x, 0      ; Se compara x con 0 para saber si es valido imprimir un numero
+je colocar_a0 ; Si es asi se salta para imprimirlo
+cmp x, 2      ; Se compara x con 2 para saber si es valido imprimir un numero
+je colocar_b0 ; Si es asi se salta para imprimirlo
+jmp mouse     ; Si no es valido se salta para seguir validando donde esta el mouse
+
+colocar_a0:
+mov a, 0      ; Se coloca en a el cuatro
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 30h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+colocar_b0:
+mov b, 0      ; Se coloca en a el cuatro
+inc x         ; Se increment el valor de x para vlidaciones
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 30h   ; Caracter que se va a imprimir
+int 10h       ; Interrupcion
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+sparte3_x4:
+cmp cx, 015eh     ; Se verifica si esta en la linea a la derecha del = ( =| ) hacia la izq
+jb identificar_pre; Si es asi salta a la etiqueta para imprimir el =
+jmp sparte4_x4    ; Sino esta en esa parte se continua a la siguiente etiqueta
+
+identificar_pre:
+cmp x, 3          ; Se compara x con 3 para saber si es valido realizar el procedimiento matematico
+je identificar    ; Si es asi se procede a identificar cual operacion se va a realizar
+jmp mouse         ; Sino se regresa al bucle principal
+
+identificar:  ; Esta etiqueta determina que simbolo hay en op para saber cual operacion realizar(+,-,x,/)
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Instruccion para posicionar el cursor
+int 10h       ; Interrupcion para posicionar el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 3dh   ; Caracter que se va a imprimir "="
+int 10h       ; Interrupcion
+inc x         ; Se incrementa el valor de x para validaciones
+inc x_g       ; Se incrementa el valor de x_g para imprimir en pantalla
+cmp op, 2bh   ; Se compara op con 2bh para saber si la operacion a realizar es una suma
+je sumar      ; Si es asi se salta a realizar la suma
+cmp op, 2dh   ; Se compara op con 2dh para saber si la operacion a realizar es una resta
+je restar     ; Si es asi se salta a realizar la resta
+cmp op, 78h   ; Se compara op con 78h para saber si la operacion a realizar es una multiplicacion
+je multiplicar; Si es asi se salta a realizar la multiplicacion
+cmp op, 2fh   ; Se compara op con 2fh para saber si la operacion a realizar es una division
+je dividir    ; Si es asi se salta a realizar la division
+
+sumar: ;Esta etiqueta esta encargada de realizar la suma
+mov ax, 0000h ; El registro AX se limpia para mantener los numeros
+add al, a     ; A AL  se le suma el valor de a
+add al, b     ; A AL  se le suma el valor de b (AL= a+b)
+aam           ; Arreglo Ascii para Multiplicacion y suma(aam)
+              ; Si AL guarda un valor de 2 digitos, aam hace un arreglo para que en AH quede las decenas y en AL las unidades
+add ah, 30h   ; A AH se le suma 30h para poder imprimir el caracter correcto
+add al, 30h   ; A AL se le suma 30h para poder imprimir el caracter correcto
+mov a, ah     ; Se coloca en a las decenas 
+mov b, al     ; Se coloca en b las unidades
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Funcion para posicionar el cursor e imprimir
+int 10h       ; Interrupcion que positiona el cursor
+mov dl, a     ; Se mueve a dl  las decenas
+int 21h       ; Con ah=02h se imprime lo que hay en dl en la posicion indicada 
+mov dl, b     ; Se sobreescribe en dl las unidades
+int 21h       ; Con ah=02h se imprime lo que hay en dl en la posicion siguiente 
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+restar: ;Esta etiqueta esta encargada de realizar la resta(primero se verifica si el minuendo(a) es mayor al sustraendo(b) )
+mov al, a     ; Se mueve a AL a
+cmp al, b     ; Se compara si b es mayor que a
+jb negativo   ; Si es asi se salta a la etiqueta "negativo"
+
+positivo: ;Esta etiqueta realiza el procedimiento normal para la resta (a-b)
+mov ax, 0000h ; El registro AX se limpia para mantener los numeros
+mov al, a     ; Se coloca en AL a
+sub al, b     ; En AL se guarda el resultado de la resta(AL=al-b)
+aam           ; Arreglo Ascii para Multiplicacion y suma(aam)
+              ; Si AL guarda un valor de 2 digitos, aam hace un arreglo para que en AH quede las decenas y en AL las unidades
+add al, 30h   ; A Al se le suma 30h para poder imprimir el caracter correcto 
+add ah, 30h   ; A AH se le suma 30h para poder imprimir el caracter correcto
+mov a, ah     ; Se coloca en a las decenas 
+mov b, al     ; Se coloca en b las unidades
+mov dh, 3     ; Y=3
+mov dl,x_g    ; X=x_g
+mov ah, 02h   ; Funcion para posicionar el cursor e imprimir
+int 10h       ; Interrupcion que positiona el cursor
+mov dl, a     ; Se mueve a dl  las decenas
+int 21h       ; Con ah=02h se imprime lo que hay en dl en la posicion indicada 
+mov dl, b     ; Se sobreescribe en dl las unidades
+int 21h       ; Con ah=02h se imprime lo que hay en dl en la posicion siguiente 
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+negativo: ;Esta etiqueta realiza el procedimiento negativo para la resta (b-a) y agrega el negativo
+mov ax, 0000h ; El registro AX se limpia para mantener los numeros
+mov al, b     ; Se coloca en AL b
+sub al, a     ; En AL se guarda el resultado de la resta(AL=al-a)
+              ; NOTA: (1-2) y (2-1) tienen como resultado el mismo numero pero con diferente...
+              ;...signo por eso simplemente se le dan vuelta a los valores para asi (#mayor-#menor)
+aam           ; Arreglo Ascii para Multiplicacion y suma(aam) 
+              ; Si AL guarda un valor de 2 digitos, aam hace un arreglo para que en AH quede las decenas y en AL las unidades
+add al, 30h   ; A AL se le suma 30h para poder imprimir el caracter correcto 
+add ah, 30h   ; A AH se le suma 30h para poder imprimir el caracter correcto
+mov a, ah     ; Se coloca en a las decenas
+mov b, al     ; Se coloca en b las unidades
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Funcion para posicionar el cursor e imprimir 
+int 10h       ; Interrupcion que positiona el cursor
+mov dl, 2dh   ; Se mueve a dl el valor en hexa de "-" para mostrar que el resultado es negativo
+int 21h       ; Con ah=02h se imprime lo que hay en dl en la posicion indicada 
+mov dl, a     ; Se mueve a dl  las decenas
+int 21h       ; Con ah=02h se imprime lo que hay en dl en la posicion indicada 
+mov dl, b     ; Se sobreescribe en dl las unidades
+int 21h       ; Con ah=02h se imprime lo que hay en dl en la posicion siguiente 
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+multiplicar:  ; Esta etiqueta se encarga de realizar la multiplicacion
+mov ax, 0000h ; El registro AX se limpia para mantener los numeros
+mov al, a     ; Se coloca en AL a
+mov ah, b     ; Se coloca en AH b
+mul ah        ; Se almacena en AX la multiplicacion (AX=ah*al)
+aam           ; Arreglo Ascii para Multiplicacion y suma(aam) 
+add ah, 30h   ; A AH se le suma 30h para poder imprimir el caracter correcto 
+add al, 30h   ; A AL se le suma 30h para poder imprimir el caracter correcto
+mov a, ah     ; Se coloca en a las decenas 
+mov b, al     ; Se coloca en b las unidades
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Funcion para posicionar el cursor e imprimir 
+int 10h       ; Interrupcion que positiona el cursor
+mov dl, a     ; Se mueve a dl  las decenas
+int 21h       ; Con ah=02h se imprime lo que hay en dl en la posicion indicada 
+mov dl, b     ; Se sobreescribe en dl las unidades
+int 21h       ; Con ah=02h se imprime lo que hay en dl en la posicion siguiente
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+dividir:      ; Esta etiqueta se encarga de realizar la division
+mov dx, 0000h ; El registro DX se limpia para mantener los numeros
+mov ax, 0000h ; El registro AX se limpia para mantener los numeros
+mov dl, b     ; Se coloca en divisor en dl
+mov al, a     ; Se coloca el dividendo en al
+cmp dl, 0     ; Se compara si dl es 0  para validar divisiones no validas
+je error      ; Si es asi se salta a la etiqueta error
+div dl        ; Se realiza la division y se guarda en ax (AX=al/dl)  
+add al, 30h   ; A AL se le suma 30h para poder imprimir el caracter correcto
+mov res, ah   ; Se guarda el residuo de la op original momentaneamente
+mov a, dl     ; Se guarda el divisor en a
+mov b, al     ; Se coloca en b las unidades
+mov dh, 3     ; Y=3
+mov dl, x_g   ; X=x_g
+mov ah, 02h   ; Funcion para posicionar el cursor e imprimir  
+int 10h       ; Interrupcion que positiona el cursor
+mov dl, b     ; Se sobreescribe en dl las unidades
+int 21h       ; Con ah=02h se imprime lo que hay en dl en la posicion siguiente 
+mov dl, 2ch   ; Se mueve a dl el valor en hexa de ","
+int 21h       
+mov dx, 0000h ; El registro DX se limpia para mantener los numeros
+mov ax, 0000h ; El registro AX se limpia para mantener los numeros
+mov ah, 10    ; Se mueve a ah 10
+mov al, res   ; En al se coloca el residuo de la division original
+mul ah        ; El residuo se multiplica por 10 (AX=ah*al)
+mov b, al     ; Se guarda en b la mul del res*10
+mov ax, 0000h ; El registro AX se limpia para mantener los numeros
+mov al, b
+mov bh, a     ; Se mueve a ah el divisor original
+div bh        ; se divide el residuo*10 entre el divisor original
+mov res, ah   ; Se guarda el residuo de la ultima operacion en res
+mov ah, 02h   ; Modo para imprimir
+add al, 30h   ; A al se le suma 30h
+mov dl, al    ; Se pone en dl lo que se va a imprimir
+int 21h        
+mov al, res   ; Se carga a al el residuo
+mov ah, 10    ; Se mueve a ah 10
+mul ah        ; Se multiplica en al por lo que habia en ah
+mov b, al     ; Se guarda en b el resultado de la multiplicacion
+mov ax, 0000h ; El registro AX se limpia para mantener los numeros
+mov al, b     ; Se mueve a al el res*10
+mov bh, a     ; Se mueve a bh el divisor original
+div bh        ; Se divide al entre bh
+mov ah, 02h   ; Se mueve a ah el modo para imprimir en modo grafico
+add al, 30h   ; Se le suma a al 30h
+mov dl, al    ; Se mueve a dl el lo que se va a imprimir
+int 21h
+jmp mouse     ; Una ves listo se regresa al bucle principal
+
+error:        ; Esta etiqueta se encarga de imprimir un mensaje de error cuando el divispr es 0
+mov dh, 3     ; Y=3
+mov dl, 12    ; X=12
+mov ah, 02h   ; Funcion para posicionar el cursor e imprimir   
+int 10h       ; Interrupcion que positiona el cursor
+mov ah, 0eh   ; Funcion para imprimir en modo grafico
+mov bx, 0071h ; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 4dh   ; Caracter que se va a imprimir "M"
+int 10h       ; Interrupcion para imprimir el caracter
+inc dl        ; Se aumenta la posicion del cursor en x
+mov al, 61h   ; Caracter a imprimir "a"
+int 10h       ; Interrupcion para imprimir el caracter
+inc dl        ; Se aumenta la posicion del cursor en x
+mov al, 74h   ; Caracter a imprimir "t"
+int 10h
+inc dl
+mov al, 68h   ; Caracter a imprimir "h"
+int 10h
+inc dl
+mov al, 45h   ; Caracter a imprimir "E"
+int 10h
+inc dl
+mov al, 72h   ; Caracter a imprimir "r"(2 veces)
+int 10h
+inc dl
+int 10h
+inc dl
+mov al, 6fh   ; Caracter a imprimir "o"
+int 10h
+inc dl
+mov al, 72h   ; Caracter a imprimir "r"
+int 10h
+jmp mouse
+
+sparte4_x4:
+cmp x, 1          ; Se compara x con 1 para saber si es valido imprimir un simbolode operacion
+je colocar_op_div ; Si es asi se salta a la etiqueta para imprimir el simbolo
+jmp mouse         ; Si no se regresa al bucle principal
+
+colocar_op_div:
+mov op, 2fh  ; Se mueve a op el valor en hexa de division "/"
+mov dh, 3    ; Y=3
+mov dl, x_g  ; X=x_g
+mov ah, 02h  ; Instruccion para posicionar el cursor
+int 10h      ; Interrupcion para posicionar el cursor
+mov ah, 0eh  ; Funcion para imprimir en modo grafico
+mov bx, 0071h; Donde en BH esta el numero de pagina y en BL esta el color de fondo
+mov al, 2fh  ; Caracter que se va a imprimir
+int 10h      ; Interrupcion para imprimir el caracter
+inc x        ; Incrementa el valor de x para validaciones
+inc x_g      ; Incrementa el valor de x_g para imprimir en pantalla
+jmp mouse    ; Una ves finalizado se regresa al bucle principal
+;*******************************************************************************
+finalizar:   ; Etiqueta para limpiar la memoria 
+mov ah, 4ch  ; Funcion para retornar el control al BIOS y limpiar la memoria
+int 21h      ; Interrupcion para retornar el control al BIOS
